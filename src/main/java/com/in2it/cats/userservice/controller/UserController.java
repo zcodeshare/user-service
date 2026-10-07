@@ -22,31 +22,19 @@ public class UserController {
 
     @Operation(summary = "${user.create}")
     @PostMapping("/create")
-    public ResponseEntity<ResponseDTO> createUser(
-            @Valid @RequestBody UserRequestDTO request) {
+    public ResponseEntity<ResponseDTO> createUser(@Valid @RequestBody UserRequestDTO request) {
 
-        UserResponseDTO data =
-                userService.createUser(request);
-
-        ResponseDTO response =
-                new ResponseDTO(true, data, null);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(response);
+        UserResponseDTO data = userService.createUser(request);
+        ResponseDTO response = new ResponseDTO(true, data, null);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @Operation(summary = "${user.getById}")
     @GetMapping("/{id}")
-    public ResponseEntity<ResponseDTO> getUserById(
-            @PathVariable String id) {
+    public ResponseEntity<ResponseDTO> getUserById(@PathVariable String id) {
 
-        UserResponseDTO data =
-                userService.getUserById(id);
-
-        ResponseDTO response =
-                new ResponseDTO(true, data, null);
-
+        UserResponseDTO data = userService.getUserById(id);
+        ResponseDTO response = new ResponseDTO(true, data, null);
         return ResponseEntity.ok(response);
     }
 
@@ -54,40 +42,26 @@ public class UserController {
     @GetMapping("/getAll")
     public ResponseEntity<ResponseDTO> getAllUsers() {
 
-        List<UserResponseDTO> data =
-                userService.getAllUsers();
-
-        ResponseDTO response =
-                new ResponseDTO(true, data, null);
-
+        List<UserResponseDTO> data = userService.getAllUsers();
+        ResponseDTO response = new ResponseDTO(true, data, null);
         return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "${user.update}")
     @PutMapping("/update/{id}")
-    public ResponseEntity<ResponseDTO> updateUser(
-            @PathVariable String id,
-            @Valid @RequestBody UserRequestDTO request) {
+    public ResponseEntity<ResponseDTO> updateUser(@PathVariable String id, @Valid @RequestBody UserRequestDTO request) {
 
-        UserResponseDTO data =
-                userService.updateUser(id, request);
-
-        ResponseDTO response =
-                new ResponseDTO(true, data, null);
-
+        UserResponseDTO data = userService.updateUser(id, request);
+        ResponseDTO response = new ResponseDTO(true, data, null);
         return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "${user.delete}")
     @DeleteMapping("/delete/{id}")
-    public ResponseEntity<ResponseDTO> deleteUser(
-            @PathVariable String id) {
+    public ResponseEntity<ResponseDTO> deleteUser(@PathVariable String id) {
 
         userService.deleteUser(id);
-
-        ResponseDTO response =
-                new ResponseDTO(true, null, null);
-
+        ResponseDTO response = new ResponseDTO(true, null, null);
         return ResponseEntity.ok(response);
     }
 }

@@ -11,10 +11,8 @@ import lombok.NoArgsConstructor;
 public class ResponseDTO {
 
     @JsonProperty("is_success")
-    private boolean isSuccess;
-
+    private boolean success;
     private Object data;
-
     @JsonProperty("error_info")
     private CustomErrorResponseDTO errorInfo;
 }

@@ -28,41 +28,46 @@ public class UserServiceImpl implements UserService {
 
         User savedUser = userRepository.save(user);
 
-        return UserResponseDTO.builder()
+        UserResponseDTO response = UserResponseDTO.builder()
                 .id(savedUser.getId())
                 .name(savedUser.getName())
                 .email(savedUser.getEmail())
                 .phone(savedUser.getPhone())
                 .build();
+
+        return response;
     }
 
     @Override
     public UserResponseDTO getUserById(String id) {
 
         User user = userRepository.findById(id)
-                .orElseThrow(() ->
-                        new UserNotFoundException(id));
+                .orElseThrow(() -> new UserNotFoundException(id));
 
-        return UserResponseDTO.builder()
+        UserResponseDTO response = UserResponseDTO.builder()
                 .id(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .build();
+
+        return response;
     }
 
     @Override
     public List<UserResponseDTO> getAllUsers() {
 
-        return userRepository.findAll()
+        List<UserResponseDTO> response = userRepository.findAll()
                 .stream()
                 .map(user -> UserResponseDTO.builder()
                         .id(user.getId())
                         .name(user.getName())
                         .email(user.getEmail())
                         .phone(user.getPhone())
-                        .build())
-                .toList();
+                        .build()
+                ).toList();
+
+        return response;
     }
 
     @Override
@@ -71,8 +76,7 @@ public class UserServiceImpl implements UserService {
             UserRequestDTO request) {
 
         User user = userRepository.findById(id)
-                .orElseThrow(() ->
-                        new UserNotFoundException(id));
+                .orElseThrow(() -> new UserNotFoundException(id));
 
         user.setName(request.getName());
         user.setEmail(request.getEmail());
@@ -80,12 +84,14 @@ public class UserServiceImpl implements UserService {
 
         User updatedUser = userRepository.save(user);
 
-        return UserResponseDTO.builder()
+        UserResponseDTO response = UserResponseDTO.builder()
                 .id(updatedUser.getId())
                 .name(updatedUser.getName())
                 .email(updatedUser.getEmail())
                 .phone(updatedUser.getPhone())
                 .build();
+
+        return response;
     }
 
     @Override
