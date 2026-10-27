@@ -1,4 +1,3 @@
-
 package com.in2it.cats.userservice.securityscan.service.impl;
 
 import com.in2it.cats.userservice.securityscan.service.ScannerExecutionService;
@@ -7,14 +6,18 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 @Service
 public class ScannerExecutionServiceImpl implements ScannerExecutionService {
 
-    private static final String SEMGREP_PATH = "/home/jitendrakumar/.local/bin/semgrep";
+    private static final String SEMGREP_PATH =
+            "/home/jitendrakumar/.local/bin/semgrep";
 
-    private static final String OSV_SCANNER_PATH = "/home/jitendrakumar/.local/bin/osv-scanner";
+    private static final String OSV_SCANNER_PATH =
+            "/home/jitendrakumar/.local/bin/osv-scanner";
 
     private static final long SCAN_TIMEOUT_MINUTES = 10;
 
@@ -43,6 +46,22 @@ public class ScannerExecutionServiceImpl implements ScannerExecutionService {
         );
     }
 
+    public BothScanResult runBoth(Path sourcePath) {
+
+        CompletableFuture<String> sastFuture =
+                CompletableFuture.supplyAsync(() -> runSast(sourcePath));
+
+        CompletableFuture<String> scaFuture =
+                CompletableFuture.supplyAsync(() -> runSca(sourcePath));
+
+        CompletableFuture.allOf(sastFuture, scaFuture).join();
+
+        return new BothScanResult(
+                sastFuture.join(),
+                scaFuture.join()
+        );
+    }
+
     private String executeScanner(String... command) {
 
         Path outputFile = null;
@@ -52,36 +71,44 @@ public class ScannerExecutionServiceImpl implements ScannerExecutionService {
             outputFile = Files.createTempFile("scanner-output-", ".json");
 
             ProcessBuilder processBuilder = new ProcessBuilder(command);
-
             processBuilder.redirectErrorStream(true);
             processBuilder.redirectOutput(outputFile.toFile());
 
             process = processBuilder.start();
 
-            boolean completed = process.waitFor(SCAN_TIMEOUT_MINUTES, TimeUnit.MINUTES);
+            boolean completed = process.waitFor(
+                    SCAN_TIMEOUT_MINUTES, TimeUnit.MINUTES);
 
             if (!completed) {
                 process.destroyForcibly();
                 process.waitFor();
 
-                throw new IllegalStateException("Security scanner timed out");
+                throw new IllegalStateException(
+                        "Security scanner timed out");
             }
 
             int exitCode = process.exitValue();
             String output = Files.readString(outputFile);
 
+            boolean isOsvScanner = command[0].equals(OSV_SCANNER_PATH);
+
+            if (isOsvScanner && exitCode == 1) {
+                return output;
+            }
+
             if (exitCode != 0) {
                 throw new IllegalStateException(
                         "Security scanner failed with exit code "
-                                + exitCode + ". Output: " + output
-                );
+                                + exitCode + ". Output: " + output);
             }
 
             return output;
 
         } catch (IOException exception) {
             throw new IllegalStateException(
-                    "Unable to execute security scanner. Check its installation and permissions.", exception);
+                    "Unable to execute security scanner. Check its installation and permissions.",
+                    exception);
+
         } catch (InterruptedException exception) {
             if (process != null) {
                 process.destroyForcibly();
@@ -89,15 +116,36 @@ public class ScannerExecutionServiceImpl implements ScannerExecutionService {
 
             Thread.currentThread().interrupt();
 
-            throw new IllegalStateException("Security scan was interrupted", exception);
+            throw new IllegalStateException(
+                    "Security scan was interrupted", exception);
+
         } finally {
             if (outputFile != null) {
                 try {
                     Files.deleteIfExists(outputFile);
                 } catch (IOException ignored) {
-                    // Temporary output cleanup failure.
+                    // Ignore temporary output cleanup failure.
                 }
             }
+        }
+    }
+
+    public static class BothScanResult {
+
+        private final String sastResult;
+        private final String scaResult;
+
+        public BothScanResult(String sastResult, String scaResult) {
+            this.sastResult = sastResult;
+            this.scaResult = scaResult;
+        }
+
+        public String getSastResult() {
+            return sastResult;
+        }
+
+        public String getScaResult() {
+            return scaResult;
         }
     }
 }
