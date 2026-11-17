@@ -24,6 +24,7 @@ public class SecurityScanEntity {
     private String message;
     private String sastResult;
     private String scaResult;
+    private String checkovResult;
     private LocalDateTime createdAt;
     private LocalDateTime startedAt;
     private LocalDateTime completedAt;

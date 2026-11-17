@@ -7,4 +7,5 @@ public interface ScannerExecutionService {
 
     String runSast(Path sourcePath);
     String runSca(Path sourcePath);
+    String runCheckov(Path sourcePath);
 }

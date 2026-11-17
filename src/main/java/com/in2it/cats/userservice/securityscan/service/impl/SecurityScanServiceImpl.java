@@ -41,9 +41,9 @@ public class SecurityScanServiceImpl implements SecurityScanService {
 
         String scanType = requestDTO.getScanType().trim().toUpperCase();
 
-        if (!scanType.equals("SAST") && !scanType.equals("SCA") && !scanType.equals("BOTH")) {
+        if (!scanType.equals("SAST") && !scanType.equals("SCA") && !scanType.equals("BOTH") && !scanType.equals("CHECKOV")) {
 
-            throw new IllegalArgumentException("Scan type must be SAST, SCA, or BOTH");
+            throw new IllegalArgumentException("Scan type must be SAST, SCA, BOTH, or CHECKOV");
         }
 
         List<AzureDevOpsRepositoryResponseDTO> repositories = azureDevOpsService.getRepositoriesByConnectionId(
@@ -97,6 +97,14 @@ public class SecurityScanServiceImpl implements SecurityScanService {
                 savedScan.setScaResult(scaResult);
             }
 
+            if (scanType.equals("CHECKOV")) {
+                savedScan.setMessage("Running Checkov scan");
+                savedScan = securityScanRepository.save(savedScan);
+
+                String checkovResult = scannerExecutionService.runCheckov(sourcePath);
+                savedScan.setCheckovResult(checkovResult);
+            }
+
             savedScan.setStatus("COMPLETED");
             savedScan.setMessage("Security scan completed successfully");
 
@@ -136,6 +144,7 @@ public class SecurityScanServiceImpl implements SecurityScanService {
         responseDTO.setCreatedAt(scanEntity.getCreatedAt());
         responseDTO.setSastResult(scanEntity.getSastResult());
         responseDTO.setScaResult(scanEntity.getScaResult());
+        responseDTO.setCheckovResult(scanEntity.getCheckovResult());
 
         return responseDTO;
     }

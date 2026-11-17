@@ -19,5 +19,6 @@ public class SecurityScanResponseDTO {
     private String message;
     private String sastResult;
     private String scaResult;
+    private String checkovResult;
     private LocalDateTime createdAt;
 }

@@ -1,5 +1,6 @@
 package com.in2it.cats.userservice.securityscan.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.in2it.cats.userservice.securityscan.service.ScannerExecutionService;
 import org.springframework.stereotype.Service;
 
@@ -7,7 +8,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -19,7 +19,12 @@ public class ScannerExecutionServiceImpl implements ScannerExecutionService {
     private static final String OSV_SCANNER_PATH =
             "/home/jitendrakumar/.local/bin/osv-scanner";
 
+    private static final String CHECKOV_PATH =
+            "/home/jitendrakumar/.local/bin/checkov";
+
     private static final long SCAN_TIMEOUT_MINUTES = 10;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public String runSast(Path sourcePath) {
@@ -46,6 +51,26 @@ public class ScannerExecutionServiceImpl implements ScannerExecutionService {
         );
     }
 
+    @Override
+    public String runCheckov(Path sourcePath) {
+        return executeScanner(
+                CHECKOV_PATH,
+                "-d",
+                sourcePath.toAbsolutePath().toString(),
+                "--output",
+                "json"
+        );
+    }
+
+    private boolean isValidJson(String output) {
+        try {
+            objectMapper.readTree(output);
+            return true;
+        } catch (Exception exception) {
+            return false;
+        }
+    }
+
     public BothScanResult runBoth(Path sourcePath) {
 
         CompletableFuture<String> sastFuture =
@@ -66,13 +91,16 @@ public class ScannerExecutionServiceImpl implements ScannerExecutionService {
 
         Path outputFile = null;
         Process process = null;
+        Path errorFile = null;
 
         try {
             outputFile = Files.createTempFile("scanner-output-", ".json");
 
             ProcessBuilder processBuilder = new ProcessBuilder(command);
-            processBuilder.redirectErrorStream(true);
+            errorFile = Files.createTempFile("scanner-error-", ".log");
+            processBuilder.redirectErrorStream(false);
             processBuilder.redirectOutput(outputFile.toFile());
+            processBuilder.redirectError(errorFile.toFile());
 
             process = processBuilder.start();
 
@@ -89,17 +117,24 @@ public class ScannerExecutionServiceImpl implements ScannerExecutionService {
 
             int exitCode = process.exitValue();
             String output = Files.readString(outputFile);
+            String errorOutput = Files.readString(errorFile);
 
             boolean isOsvScanner = command[0].equals(OSV_SCANNER_PATH);
+            boolean isCheckovScanner = command[0].equals(CHECKOV_PATH);
 
             if (isOsvScanner && exitCode == 1) {
+                return output;
+            }
+            if (isCheckovScanner && exitCode == 1 && isValidJson(output)) {
                 return output;
             }
 
             if (exitCode != 0) {
                 throw new IllegalStateException(
                         "Security scanner failed with exit code "
-                                + exitCode + ". Output: " + output);
+                                + exitCode
+                                + ". Output: " + output
+                                + ". Error: " + errorOutput);
             }
 
             return output;
@@ -125,6 +160,13 @@ public class ScannerExecutionServiceImpl implements ScannerExecutionService {
                     Files.deleteIfExists(outputFile);
                 } catch (IOException ignored) {
                     // Ignore temporary output cleanup failure.
+                }
+            }
+            if (errorFile != null) {
+                try {
+                    Files.deleteIfExists(errorFile);
+                } catch (IOException ignored) {
+                    // Ignore temporary error file cleanup failure.
                 }
             }
         }
